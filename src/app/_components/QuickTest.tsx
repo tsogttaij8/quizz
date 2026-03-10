@@ -44,7 +44,9 @@ export default function QuickTest({
 }: QuickTestProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
-  const parsedQuiz: QuizQuestion[] = JSON.parse(quiz as unknown as string);
+  const parsedQuiz: QuizQuestion[] = Array.isArray(quiz)
+    ? quiz
+    : JSON.parse(quiz as unknown as string);
   const currentQuestion = parsedQuiz[currentQuestionIndex];
 
   const handleAnswerClick = (optionIndex: number) => {

@@ -52,7 +52,6 @@ export default function SummarizedCard({
   const handleTakeQuiz = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
 
-    if (!title || !content) return;
     if (loading) return;
     if (!articleId) {
       console.error("articleId is missing");
@@ -62,30 +61,18 @@ export default function SummarizedCard({
     setLoading(true);
 
     try {
-      const response = await axios.post("/api/generate/quizzes", {
-        content,
-      });
+      const quizRes = await axios.post(`/api/article/${articleId}/quizzes`);
 
-      const rawQuiz = response.data.result;
+      console.log("quiz saved:", quizRes.data);
 
-      console.log("rawQuiz:", rawQuiz);
-      console.log("articleId:", articleId);
+      const quizzes = quizRes.data.quizzes;
 
-      const parsedQuiz: QuizQuestion[] =
-        typeof rawQuiz === "string" ? JSON.parse(rawQuiz) : rawQuiz;
-
-      if (!Array.isArray(parsedQuiz) || parsedQuiz.length === 0) {
-        console.error("parsedQuiz is invalid:", parsedQuiz);
+      if (!Array.isArray(quizzes) || quizzes.length === 0) {
+        console.error("No quizzes returned:", quizzes);
         return;
       }
 
-      const quizRes = await axios.post(`/api/article/${articleId}/quizzes`, {
-        quizzes: parsedQuiz,
-      });
-
-      setQuiz(parsedQuiz as []);
-      console.log("quiz saved:", quizRes.data);
-
+      setQuiz(quizzes);
       setStep(3);
     } catch (err: any) {
       console.error(
@@ -149,7 +136,7 @@ export default function SummarizedCard({
         <Button
           type="button"
           className="w-27 cursor-pointer"
-          disabled={!title || !content || loading || !articleId}
+          disabled={loading || !articleId}
           onClick={handleTakeQuiz}
         >
           {loading ? "Take a quiz..." : "Take a quiz"}

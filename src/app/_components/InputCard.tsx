@@ -73,7 +73,9 @@ export default function InputCard({
       setStep(2);
     } catch (err: unknown) {
       const axiosError = err as {
-        response?: { data?: { error?: string; message?: string } };
+        response?: {
+          data?: { error?: string; message?: string; details?: string | null };
+        };
         message?: string;
       };
 
@@ -84,6 +86,7 @@ export default function InputCard({
 
       alert(
         axiosError?.response?.data?.error ||
+          axiosError?.response?.data?.details ||
           axiosError?.response?.data?.message ||
           axiosError?.message ||
           "Generate хийхэд алдаа гарлаа",
@@ -99,12 +102,13 @@ export default function InputCard({
         <div className="flex items-center gap-2.5">
           <GeminiIcon />
           <CardTitle className="text-[24px] font-semibold tracking-[-0.02em] text-slate-950">
-            Article Quiz Generator
+            Quizz AI Study Assistant
           </CardTitle>
         </div>
         <CardDescription className="max-w-2xl text-sm leading-6 text-slate-500">
-          Paste your article below to generate a summarize and quiz question.
-          Your articles will saved in the sidebar for future reference.
+          Paste any lesson note, article, or reading material to generate a
+          clean summary and practice quiz. Saved entries stay in your sidebar
+          so you can revisit them later.
         </CardDescription>
       </CardHeader>
 
@@ -115,13 +119,13 @@ export default function InputCard({
               <div className="flex items-center gap-1.5">
                 <FileIcon />
                 <Label htmlFor="title" className="text-sm font-medium text-slate-700">
-                  Article Title
+                  Topic Title
                 </Label>
               </div>
               <Input
                 id="title"
                 type="text"
-                placeholder="Enter a title for your article..."
+                placeholder="Enter the topic title..."
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -133,13 +137,13 @@ export default function InputCard({
               <div className="flex items-center gap-1.5">
                 <FileIcon />
                 <Label htmlFor="content" className="text-sm font-medium text-slate-700">
-                  Article Content
+                  Source Content
                 </Label>
               </div>
               <Textarea
                 id="content"
                 required
-                placeholder="Paste your article content here..."
+                placeholder="Paste the lesson or article content here..."
                 value={content}
                 className="min-h-[260px] rounded-2xl border-slate-200 bg-white px-4 py-3 text-sm leading-6 shadow-none placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-slate-300"
                 onChange={(e) => setContent(e.target.value)}
@@ -156,7 +160,7 @@ export default function InputCard({
           disabled={!title || !content || loading}
           onClick={handleGenerate}
         >
-          {loading ? "Generate summary..." : "Generate summary"}
+          {loading ? "Generating summary..." : "Generate summary"}
         </Button>
       </CardFooter>
     </Card>

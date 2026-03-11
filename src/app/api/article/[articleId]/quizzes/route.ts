@@ -1,28 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "../../../../../../lib/prisma";
+import { createGeminiClient, formatGeminiError, getGeminiApiKey } from "@/lib/gemini";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+type GeneratedQuiz = {
+  question: string;
+  options: string[];
+  answer: string;
+};
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ articleId: string }> },
 ) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
+    const { userId } = await auth();
+
+    if (!userId) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY is missing in .env" },
+        { error: "Unauthorized - Please sign in" },
+        { status: 401 },
+      );
+    }
+
+    if (!getGeminiApiKey()) {
+      return NextResponse.json(
+        { error: "GEMINI_API_KEY or GOOGLE_API_KEY is missing in .env" },
         { status: 500 },
       );
     }
 
+    const ai = createGeminiClient();
+
     const { articleId } = await context.params;
     console.log("articleId:", articleId);
 
-    const article = await prisma.article.findUnique({
-      where: { id: articleId },
+    const article = await prisma.article.findFirst({
+      where: {
+        id: articleId,
+        user: {
+          clerkId: userId,
+        },
+      },
     });
 
     console.log("article found:", article);
@@ -78,12 +97,12 @@ ${article.content}
 
     console.log("cleanedText:", cleanedText);
 
-    let parsed: any;
+    let parsed: unknown;
 
     try {
       parsed = JSON.parse(cleanedText);
       console.log("parsed:", parsed);
-    } catch (parseError: any) {
+    } catch (parseError: unknown) {
       console.error("Quiz JSON parse error:", parseError);
       console.error("Raw AI response:", rawText);
 
@@ -96,7 +115,19 @@ ${article.content}
       );
     }
 
-    if (!Array.isArray(parsed) || parsed.length === 0) {
+    if (
+      !Array.isArray(parsed) ||
+      parsed.length === 0 ||
+      !parsed.every(
+        (quiz): quiz is GeneratedQuiz =>
+          typeof quiz === "object" &&
+          quiz !== null &&
+          typeof quiz.question === "string" &&
+          Array.isArray(quiz.options) &&
+          quiz.options.every((option: unknown) => typeof option === "string") &&
+          typeof quiz.answer === "string",
+      )
+    ) {
       return NextResponse.json(
         { error: "AI returned empty or invalid quiz array" },
         { status: 500 },
@@ -104,7 +135,7 @@ ${article.content}
     }
 
     await prisma.quiz.createMany({
-      data: parsed.map((q: any) => ({
+      data: parsed.map((q) => ({
         articleId,
         question: q.question,
         options: q.options,
@@ -125,17 +156,15 @@ ${article.content}
       },
       { status: 200 },
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const formattedError = formatGeminiError(err);
+
     console.error("Generate quizzes error FULL:", err);
-    console.error("Generate quizzes error MESSAGE:", err?.message);
-    console.error("Generate quizzes error STACK:", err?.stack);
+    console.error("Generate quizzes error FORMATTED:", formattedError);
 
     return NextResponse.json(
-      {
-        error: err?.message || "Failed to generate quizzes",
-        stack: err?.stack || null,
-      },
-      { status: 500 },
+      formattedError,
+      { status: formattedError.status },
     );
   }
 }

@@ -56,10 +56,9 @@ export default function ArticleHistory({
       try {
         setLoading(true);
         const response = await axios.get(`/api/article/${articleId}`);
-        const articleArray = response.data.article;
-        console.log("Fetched article data:", articleArray);
-        if (articleArray.length > 0) {
-          const article = articleArray[0];
+        const article = response.data.article;
+        console.log("Fetched article data:", article);
+        if (article) {
           setContentData(article.content);
           setSummaryData(article.summary);
           setTitleData(article.title);
@@ -120,11 +119,11 @@ export default function ArticleHistory({
         <div className="flex items-center gap-2.5">
           <GeminiIcon />
           <CardTitle className="text-[24px] font-semibold tracking-[-0.02em] text-slate-950">
-            Article Quiz Generator
+            Quizz AI Study Assistant
           </CardTitle>
         </div>
         <CardDescription className="flex items-center gap-2 text-sm text-slate-500">
-          <BookIcon /> Summarized content
+          <BookIcon /> Saved summary
         </CardDescription>
       </CardHeader>
       <CardContent className="px-6 py-6 sm:px-8">
@@ -141,7 +140,7 @@ export default function ArticleHistory({
             <div className="flex w-full items-center gap-1.5">
               <FileIcon />
               <Label htmlFor="article-content" className="text-sm font-medium text-slate-700">
-                Article Content
+                Source Content
               </Label>
             </div>
             <div
@@ -158,7 +157,7 @@ export default function ArticleHistory({
                     variant="outline"
                     className="h-11 cursor-pointer rounded-xl border-slate-200 bg-white text-sm text-slate-700 transition-colors hover:bg-slate-50"
                   >
-                    See more
+                    View source
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="border-slate-200 p-6 sm:max-w-3xl">
@@ -183,7 +182,7 @@ export default function ArticleHistory({
           onClick={handleTakeQuiz}
           disabled={loading}
         >
-          Take a quiz
+          Start quiz
         </Button>
       </CardFooter>
     </Card>

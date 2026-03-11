@@ -1,11 +1,16 @@
 import { NextRequest } from "next/server";
-import { GoogleGenAI } from "@google/genai";
-
-// The client gets the API key from the environment variable `GEMINI_API_KEY`.
-const ai = new GoogleGenAI({});
+import { createGeminiClient, formatGeminiError, getGeminiApiKey } from "@/lib/gemini";
 
 export async function POST(request: NextRequest) {
   try {
+    if (!getGeminiApiKey()) {
+      return Response.json(
+        { error: "GEMINI_API_KEY or GOOGLE_API_KEY is missing in .env" },
+        { status: 500 },
+      );
+    }
+
+    const ai = createGeminiClient();
     const body = await request.json();
     const { content } = body;
 
@@ -29,10 +34,11 @@ export async function POST(request: NextRequest) {
       .replace(/```\s*$/, "");
     console.log("Cleaned Text:", cleanedText);
     return Response.json({ result: cleanedText });
-  } catch (err) {
-    return Response.json(
-      { error: "Server aldaa garlaa", details: String(err) },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const formattedError = formatGeminiError(err);
+
+    return Response.json(formattedError, {
+      status: formattedError.status,
+    });
   }
 }

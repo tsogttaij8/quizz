@@ -8,6 +8,10 @@ type CreateArticleBody = {
   summary: string;
 };
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
@@ -68,19 +72,19 @@ export async function POST(req: NextRequest) {
       { success: true, message: "Article created", article },
       { status: 201 },
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Article creation error:", err);
     return NextResponse.json(
       {
         success: false,
-        error: err?.message || String(err),
+        error: getErrorMessage(err),
       },
       { status: 500 },
     );
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const { userId } = await auth();
 
@@ -112,12 +116,12 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, articles }, { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Article fetch error:", err);
     return NextResponse.json(
       {
         success: false,
-        error: err?.message || String(err),
+        error: getErrorMessage(err),
       },
       { status: 500 },
     );

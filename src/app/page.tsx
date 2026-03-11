@@ -36,15 +36,16 @@ export default function Home() {
       </SignedIn>
       <SignedOut>
         <div className="flex min-h-[calc(100vh-73px)] items-center justify-center px-4 py-10">
-          <Card className="w-full max-w-sm border border-slate-200 bg-white text-center shadow-sm">
+            <Card className="w-full max-w-sm border border-slate-200 bg-white text-center shadow-sm">
             <CardHeader className="gap-2">
               <CardTitle className="text-xl font-semibold">
-              Sign in required 🔒
+                Sign in required
               </CardTitle>
               <CardDescription className="text-sm text-slate-500">
-                You need to be singed in to continue.
+                Sign in to save summaries, generate quizzes, and review your
+                study history.
                 <br />
-                Please sign in to access this feature.
+                Create an account or continue with your existing one.
               </CardDescription>
             </CardHeader>
           </Card>

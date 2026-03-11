@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+import { createGeminiClient, formatGeminiError, getGeminiApiKey } from "@/lib/gemini";
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
+    if (!getGeminiApiKey()) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY is missing in .env" },
+        { error: "GEMINI_API_KEY or GOOGLE_API_KEY is missing in .env" },
         { status: 500 },
       );
     }
+
+    const ai = createGeminiClient();
 
     const body = await request.json();
     const { content } = body;
@@ -27,19 +25,15 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ result: response.text });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const formattedError = formatGeminiError(err);
+
     console.error("GENERATE ERROR FULL:", err);
-    console.error("GENERATE ERROR MESSAGE:", err?.message);
-    console.error("GENERATE ERROR STATUS:", err?.status);
-    console.error("GENERATE ERROR STACK:", err?.stack);
-    console.error("GENERATE ERROR RAW:", JSON.stringify(err, null, 2));
+    console.error("GENERATE ERROR FORMATTED:", formattedError);
 
     return NextResponse.json(
-      {
-        error: err?.message || err?.statusText || "Failed to generate summary",
-        status: err?.status || 500,
-      },
-      { status: err?.status || 500 },
+      formattedError,
+      { status: formattedError.status },
     );
   }
 }

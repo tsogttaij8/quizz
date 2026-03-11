@@ -1,15 +1,35 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "../../../../../lib/prisma";
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Failed to get article";
+}
+
 export async function GET(
-  req: NextRequest,
+  request: Request,
   context: { params: Promise<{ articleId: string }> },
 ) {
   try {
+    void request;
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized - Please sign in" },
+        { status: 401 },
+      );
+    }
+
     const { articleId } = await context.params;
 
-    const article = await prisma.article.findUnique({
-      where: { id: articleId },
+    const article = await prisma.article.findFirst({
+      where: {
+        id: articleId,
+        user: {
+          clerkId: userId,
+        },
+      },
       include: { quizzes: true },
     });
 
@@ -21,10 +41,10 @@ export async function GET(
     }
 
     return NextResponse.json({ article }, { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Article get error:", err);
     return NextResponse.json(
-      { success: false, error: err?.message || "failed to get article" },
+      { success: false, error: getErrorMessage(err) },
       { status: 500 },
     );
   }

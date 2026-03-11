@@ -78,13 +78,14 @@ export default function QuickTest({
           <div className="flex items-start justify-between gap-4">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2.5">
-            <GeminiIcon />
+                <GeminiIcon />
                 <div className="text-[24px] font-semibold tracking-[-0.02em] text-slate-950">
-                  Quick test
+                  Practice quiz
                 </div>
               </div>
               <div className="text-sm leading-6 text-slate-500">
-                Take a quick test about your knowledge from your content.
+                Answer the questions below to check how well you understood the
+                summary.
               </div>
             </div>
             <Dialog>
@@ -100,7 +101,7 @@ export default function QuickTest({
                 <DialogContent className="border-slate-200 p-6 sm:max-w-lg">
                   <DialogHeader>
                     <DialogTitle className="text-[24px] font-semibold tracking-[-0.02em] text-slate-950">
-                      Are you sure?
+                      Exit quiz?
                     </DialogTitle>
                     <DialogDescription className="text-sm leading-6 text-red-500">
                       If you press &apos;Cancel&apos;, this quiz will restart
@@ -113,7 +114,7 @@ export default function QuickTest({
                         type="submit"
                         className="h-11 w-full rounded-xl bg-slate-700 text-white hover:bg-slate-800 sm:w-auto"
                       >
-                        Go back
+                        Continue quiz
                       </Button>
                     </DialogClose>
                     <Button
@@ -121,7 +122,7 @@ export default function QuickTest({
                       className="h-11 w-full rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 sm:w-auto"
                       onClick={() => setStep(1)}
                     >
-                      Cancel quiz
+                      Restart quiz
                     </Button>
                   </DialogFooter>
                 </DialogContent>

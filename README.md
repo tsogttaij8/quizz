@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Quizz AI
 
-## Getting Started
+Quizz AI is a Next.js study assistant that turns long-form reading material into short summaries and multiple-choice quizzes. Users sign in with Clerk, save generated study items to PostgreSQL with Prisma, and revisit past content from the sidebar.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- Clerk authentication
+- Prisma with PostgreSQL
+- Google Gemini API
+- Tailwind CSS and shadcn/ui
+
+## Features
+
+- Sign in and manage a personal study workspace
+- Paste article or lesson content and generate an AI summary
+- Save summaries to the database
+- Generate quiz questions from saved content
+- Open saved history and retake quizzes
+
+## Environment Variables
+
+Create a `.env` file with these values:
+
+```env
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+CLERK_WEBHOOK_SIGNING_SECRET=
+GEMINI_API_KEY=
+DATABASE_URL=
+```
+
+## Local Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Generate the Prisma client:
+
+```bash
+npx prisma generate
+```
+
+3. Apply database migrations:
+
+```bash
+npx prisma migrate deploy
+```
+
+4. Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deployment Checklist
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Add every environment variable in your hosting provider.
+2. Point `DATABASE_URL` to your production PostgreSQL database.
+3. Run Prisma migrations in production.
+4. Add the Clerk webhook endpoint:
 
-## Learn More
+```text
+https://your-domain.com/api/webhooks/clerk
+```
 
-To learn more about Next.js, take a look at the following resources:
+5. Test sign-in, summary generation, quiz generation, and history loading after deploy.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Do not commit real API keys or database credentials.
+- If you rotate Clerk or Gemini keys, update them in both local `.env` and production settings.

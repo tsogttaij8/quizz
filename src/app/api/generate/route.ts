@@ -5,7 +5,20 @@ import {
   isAiOverloaded,
 } from "@/lib/gemini";
 
+function createFallbackSummary(content: string) {
+  const normalized = content.replace(/\s+/g, " ").trim();
+  const sentences = normalized
+    .split(/(?<=[.!?。！？])\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(" ");
+
+  return sentences || normalized.slice(0, 700);
+}
+
 export async function POST(request: NextRequest) {
+  let content = "";
+
   try {
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
@@ -15,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { content } = body;
+    content = body.content;
 
     if (!content || !content.trim()) {
       return NextResponse.json({ error: "No message" }, { status: 400 });
@@ -43,11 +56,18 @@ ${content}
     const maybeStatus = getAiStatusCode(err);
     const isHighDemandError = isAiOverloaded(err);
 
-    console.error("GENERATE ERROR FULL:", err);
-    console.error("GENERATE ERROR MESSAGE:", error.message);
-    console.error("GENERATE ERROR STATUS:", maybeStatus);
-    console.error("GENERATE ERROR STACK:", error.stack);
-    console.error("GENERATE ERROR RAW:", JSON.stringify(err, null, 2));
+    console.warn("Generate summary failed:", {
+      status: maybeStatus,
+      message: error.message,
+    });
+
+    if (isHighDemandError && content) {
+      return NextResponse.json({
+        result: createFallbackSummary(content),
+        model: "local-fallback",
+        warning: "Gemini quota exceeded; used local fallback summary.",
+      });
+    }
 
     return NextResponse.json(
       {

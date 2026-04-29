@@ -66,6 +66,65 @@ function normalizeQuizItem(item: RawQuiz) {
   };
 }
 
+function createFallbackQuizzes(article: { title: string; content: string }) {
+  const normalizedContent = article.content.replace(/\s+/g, " ").trim();
+  const shortContent = normalizedContent.slice(0, 180);
+  const title = article.title || "энэ сэдэв";
+
+  return [
+    {
+      question: `"${title}" сэдвийн гол агуулга аль нь вэ?`,
+      options: [
+        shortContent || title,
+        "Сэдэвтэй холбоогүй мэдээлэл",
+        "Зөвхөн зохиомол тайлбар",
+        "Дээрхээс аль нь ч биш",
+      ],
+      answer: "0",
+    },
+    {
+      question: "Энэ нийтлэл ямар мэдээлэл дээр төвлөрч байна вэ?",
+      options: [
+        title,
+        "Спортын тэмцээний дүн",
+        "Хоолны жор",
+        "Цаг агаарын мэдээ",
+      ],
+      answer: "0",
+    },
+    {
+      question: "Нийтлэлийг ойлгохын тулд хамгийн түрүүнд юуг анхаарах вэ?",
+      options: [
+        "Гол санаа болон баримтуудыг",
+        "Зөвхөн эхний үгийг",
+        "Зураг чимэглэлийг",
+        "Холбоогүй жишээг",
+      ],
+      answer: "0",
+    },
+    {
+      question: "Энэ сэдвээр тестийн зөв хариултыг яаж сонгох вэ?",
+      options: [
+        "Нийтлэлд байгаа мэдээлэлтэй тулгаж",
+        "Таамгаар сонгож",
+        "Хамгийн урт сонголтыг сонгож",
+        "Сүүлчийн сонголтыг үргэлж сонгож",
+      ],
+      answer: "0",
+    },
+    {
+      question: "Энэ нийтлэлийн хураангуй ямар байх ёстой вэ?",
+      options: [
+        "Гол санааг товч, ойлгомжтой илэрхийлсэн байх",
+        "Эхтэй холбоогүй байх",
+        "Зөвхөн нэг санамсаргүй үг байх",
+        "Заавал англи хэлээр байх",
+      ],
+      answer: "0",
+    },
+  ];
+}
+
 export async function POST(
   _request: NextRequest,
   context: { params: Promise<{ articleId: string }> },
@@ -219,9 +278,47 @@ ${article.content}
     const error = err instanceof Error ? err : new Error(String(err));
     const status = getAiStatusCode(err);
 
-    console.error("Generate quizzes error FULL:", err);
-    console.error("Generate quizzes error MESSAGE:", error.message);
-    console.error("Generate quizzes error STACK:", error.stack);
+    console.warn("Generate quizzes failed:", {
+      status,
+      message: error.message,
+    });
+
+    if (isAiOverloaded(err)) {
+      try {
+        const { articleId } = await context.params;
+        const article = await prisma.article.findUnique({
+          where: { id: articleId },
+        });
+
+        if (article) {
+          const fallbackQuizzes = createFallbackQuizzes(article);
+
+          await prisma.quiz.createMany({
+            data: fallbackQuizzes.map((q) => ({
+              articleId,
+              question: q.question,
+              options: q.options,
+              answer: q.answer,
+            })),
+          });
+
+          const quizzes = await prisma.quiz.findMany({
+            where: { articleId },
+          });
+
+          return NextResponse.json(
+            {
+              success: true,
+              quizzes,
+              warning: "Gemini quota exceeded; used local fallback quizzes.",
+            },
+            { status: 200 },
+          );
+        }
+      } catch (fallbackError) {
+        console.warn("Fallback quiz generation failed:", fallbackError);
+      }
+    }
 
     return NextResponse.json(
       {

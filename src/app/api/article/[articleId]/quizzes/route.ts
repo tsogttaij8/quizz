@@ -1,47 +1,88 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import prisma from "../../../../../../lib/prisma";
-import { createGeminiClient, formatGeminiError, getGeminiApiKey } from "@/lib/gemini";
+import {
+  generateTextWithFallback,
+  getAiStatusCode,
+  isAiOverloaded,
+} from "@/lib/gemini";
 
-type GeneratedQuiz = {
-  question: string;
-  options: string[];
-  answer: string;
+type RawQuiz = {
+  question?: unknown;
+  options?: unknown;
+  answer?: unknown;
 };
 
+const quizResponseSchema = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      question: { type: "string" },
+      options: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 4,
+        maxItems: 4,
+      },
+      answer: { type: "string" },
+    },
+    required: ["question", "options", "answer"],
+  },
+};
+
+function normalizeQuizItem(item: RawQuiz) {
+  const question = typeof item.question === "string" ? item.question.trim() : "";
+  const options = Array.isArray(item.options)
+    ? item.options.filter((opt): opt is string => typeof opt === "string")
+    : [];
+
+  if (!question || options.length !== 4) {
+    return null;
+  }
+
+  let answerIndex = -1;
+
+  if (typeof item.answer === "number") {
+    answerIndex = item.answer;
+  } else if (typeof item.answer === "string") {
+    const trimmedAnswer = item.answer.trim();
+    const numericAnswer = Number(trimmedAnswer);
+
+    if (Number.isInteger(numericAnswer)) {
+      answerIndex = numericAnswer;
+    } else {
+      answerIndex = options.findIndex((option) => option === trimmedAnswer);
+    }
+  }
+
+  if (answerIndex < 0 || answerIndex > 3) {
+    return null;
+  }
+
+  return {
+    question,
+    options,
+    answer: String(answerIndex),
+  };
+}
+
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ articleId: string }> },
 ) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
-        { error: "Unauthorized - Please sign in" },
-        { status: 401 },
-      );
-    }
-
-    if (!getGeminiApiKey()) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY or GOOGLE_API_KEY is missing in .env" },
+        { error: "GEMINI_API_KEY is missing in .env" },
         { status: 500 },
       );
     }
 
-    const ai = createGeminiClient();
-
     const { articleId } = await context.params;
     console.log("articleId:", articleId);
 
-    const article = await prisma.article.findFirst({
-      where: {
-        id: articleId,
-        user: {
-          clerkId: userId,
-        },
-      },
+    const article = await prisma.article.findUnique({
+      where: { id: articleId },
     });
 
     console.log("article found:", article);
@@ -57,37 +98,56 @@ export async function POST(
       );
     }
 
+    const existingQuizzes = await prisma.quiz.findMany({
+      where: { articleId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (existingQuizzes.length > 0) {
+      return NextResponse.json(
+        {
+          success: true,
+          quizzes: existingQuizzes,
+        },
+        { status: 200 },
+      );
+    }
+
     console.log("article content length:", article.content.length);
 
     const prompt = `
-Generate 5 multiple-choice quiz questions from the article below.
+Доорх нийтлэл дээр үндэслэн 5 олон сонголттой асуулт үүсгэ.
 
-Return ONLY valid JSON.
-Do not add explanation.
-Do not add markdown.
-Do not wrap the response in triple backticks.
+Дүрэм:
+- Нийтлэл ямар хэл дээр байгааг дагаж асуулт, сонголтуудыг бич.
+- Хэрэв оролт Монгол хэл дээр бол бүх асуулт, сонголтыг зөв бичгийн болон утга зүйн алдаагүй кирилл Монгол хэлээр бич.
+- Асуултууд нь нийтлэлийн үйл явдал, утга санаа, гол баримттай шууд холбоотой байх.
+- Сонголт бүр ойлгомжтой, хоорондоо давхцахгүй, нэг л зөв хариулттай байх.
+- ЗӨВХӨН хүчинтэй JSON буцаа. Тайлбар, markdown, code fence бүү нэм.
 
-Return exactly this format:
+Яг энэ форматыг дага:
 [
   {
-    "question": "Question here",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
-    "answer": "Option A"
+    "question": "Асуултын текст",
+    "options": ["Сонголт 1", "Сонголт 2", "Сонголт 3", "Сонголт 4"],
+    "answer": "0"
   }
 ]
 
-Article:
+"answer" нь зөв хариултын индекс (0-3) байна.
+
+Нийтлэл:
 ${article.content}
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
+    const { text: rawText, model } = await generateTextWithFallback(prompt, {
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: quizResponseSchema,
+      },
     });
 
-    console.log("AI response received");
-
-    const rawText = response.text || "";
+    console.log("AI response received from model:", model);
     console.log("rawText:", rawText);
 
     const cleanedText = rawText
@@ -115,27 +175,26 @@ ${article.content}
       );
     }
 
-    if (
-      !Array.isArray(parsed) ||
-      parsed.length === 0 ||
-      !parsed.every(
-        (quiz): quiz is GeneratedQuiz =>
-          typeof quiz === "object" &&
-          quiz !== null &&
-          typeof quiz.question === "string" &&
-          Array.isArray(quiz.options) &&
-          quiz.options.every((option: unknown) => typeof option === "string") &&
-          typeof quiz.answer === "string",
-      )
-    ) {
+    if (!Array.isArray(parsed) || parsed.length === 0) {
       return NextResponse.json(
         { error: "AI returned empty or invalid quiz array" },
         { status: 500 },
       );
     }
 
+    const normalizedQuizzes = parsed
+      .map((item) => normalizeQuizItem(item as RawQuiz))
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    if (normalizedQuizzes.length === 0) {
+      return NextResponse.json(
+        { error: "AI returned quiz data in unsupported format" },
+        { status: 500 },
+      );
+    }
+
     await prisma.quiz.createMany({
-      data: parsed.map((q) => ({
+      data: normalizedQuizzes.map((q) => ({
         articleId,
         question: q.question,
         options: q.options,
@@ -157,14 +216,21 @@ ${article.content}
       { status: 200 },
     );
   } catch (err: unknown) {
-    const formattedError = formatGeminiError(err);
+    const error = err instanceof Error ? err : new Error(String(err));
+    const status = getAiStatusCode(err);
 
     console.error("Generate quizzes error FULL:", err);
-    console.error("Generate quizzes error FORMATTED:", formattedError);
+    console.error("Generate quizzes error MESSAGE:", error.message);
+    console.error("Generate quizzes error STACK:", error.stack);
 
     return NextResponse.json(
-      formattedError,
-      { status: formattedError.status },
+      {
+        error: isAiOverloaded(err)
+          ? "AI service tur achaalaltai baina. Quiz dahiad neg oroldooroi."
+          : error.message || "Failed to generate quizzes",
+        stack: error.stack || null,
+      },
+      { status },
     );
   }
 }

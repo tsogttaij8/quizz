@@ -15,7 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import GeminiIcon from "../icons/GeminiIcon";
 import BookIcon from "../icons/BookIcon";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -76,13 +75,19 @@ export default function SummarizedCard({
       setStep(3);
     } catch (err: unknown) {
       const axiosError = err as {
-        response?: { data?: unknown };
+        response?: { data?: { error?: string; message?: string } };
         message?: string;
       };
 
       console.error(
         "HANDLE TAKE QUIZ ERROR:",
         axiosError?.response?.data || axiosError?.message,
+      );
+      alert(
+        axiosError?.response?.data?.error ||
+          axiosError?.response?.data?.message ||
+          axiosError?.message ||
+          "Тест үүсгэх үед алдаа гарлаа",
       );
     } finally {
       setLoading(false);
@@ -93,20 +98,18 @@ export default function SummarizedCard({
     <Card className="w-full rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
       <CardHeader className="space-y-3 px-6 pb-0 pt-6 sm:px-8 sm:pt-8">
         <div className="flex items-center gap-2.5">
-          <GeminiIcon />
           <CardTitle className="text-[24px] font-semibold tracking-[-0.02em] text-slate-950">
-            Quizz AI Study Assistant
+            ✨Тест үүсгэх ухаалаг систем
           </CardTitle>
         </div>
         <CardDescription className="text-sm text-slate-500">
-          Your content has been summarized. Review it, then generate a quiz to
-          check understanding.
+          Сэдвийн хураангуй бэлэн боллоо. Шалгаж хараад тестээ үүсгээрэй.
         </CardDescription>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4 px-6 py-6 sm:px-8">
         <CardDescription className="flex items-center gap-2 text-sm text-slate-500">
-          <BookIcon /> Summary
+          <BookIcon /> Хураангуй агуулга
         </CardDescription>
 
         <div className="text-[26px] font-semibold leading-8 tracking-[-0.02em] text-slate-950">
@@ -127,7 +130,7 @@ export default function SummarizedCard({
                 variant="outline"
                 className="h-11 w-full cursor-pointer rounded-xl border-slate-200 bg-white text-sm text-slate-700 transition-colors hover:bg-slate-50 sm:w-auto"
               >
-                View source
+                Эх нийтлэл харах
               </Button>
             </DialogTrigger>
 
@@ -150,7 +153,7 @@ export default function SummarizedCard({
           disabled={loading || !articleId}
           onClick={handleTakeQuiz}
         >
-          {loading ? "Generating quiz..." : "Start quiz"}
+          {loading ? "Тест бэлдэж байна..." : "Тест эхлүүлэх"}
         </Button>
       </CardFooter>
     </Card>

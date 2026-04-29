@@ -1,6 +1,5 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import GeminiIcon from "../icons/GeminiIcon";
 import { XIcon } from "lucide-react";
 import {
   Dialog,
@@ -78,14 +77,12 @@ export default function QuickTest({
           <div className="flex items-start justify-between gap-4">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2.5">
-                <GeminiIcon />
                 <div className="text-[24px] font-semibold tracking-[-0.02em] text-slate-950">
-                  Practice quiz
+                  Шуурхай тест
                 </div>
               </div>
               <div className="text-sm leading-6 text-slate-500">
-                Answer the questions below to check how well you understood the
-                summary.
+                Уншсан агуулгынхаа ойлголтыг шуурхай шалгаарай.
               </div>
             </div>
             <Dialog>
@@ -101,11 +98,10 @@ export default function QuickTest({
                 <DialogContent className="border-slate-200 p-6 sm:max-w-lg">
                   <DialogHeader>
                     <DialogTitle className="text-[24px] font-semibold tracking-[-0.02em] text-slate-950">
-                      Exit quiz?
+                      Та итгэлтэй байна уу?
                     </DialogTitle>
                     <DialogDescription className="text-sm leading-6 text-red-500">
-                      If you press &apos;Cancel&apos;, this quiz will restart
-                      from the beginning.
+                      Тестээс гарвал эхнээс нь дахин эхлэх болно.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between">
@@ -114,7 +110,7 @@ export default function QuickTest({
                         type="submit"
                         className="h-11 w-full rounded-xl bg-slate-700 text-white hover:bg-slate-800 sm:w-auto"
                       >
-                        Continue quiz
+                        Буцах
                       </Button>
                     </DialogClose>
                     <Button
@@ -122,7 +118,7 @@ export default function QuickTest({
                       className="h-11 w-full rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 sm:w-auto"
                       onClick={() => setStep(1)}
                     >
-                      Restart quiz
+                      Тестээс гарах
                     </Button>
                   </DialogFooter>
                 </DialogContent>
